@@ -1,6 +1,6 @@
 // tslint:disable:no-any no-invalid-this
 import { Component } from '@angular/core';
-import * as Handsontable from 'handsontable/dist/handsontable.full.js';
+import * as Handsontable from 'handsontable';
 import { getScienceData } from './data';
 
 const heatmapScale = chroma.scale(['#17F556', '#ED6D47']);
@@ -60,10 +60,10 @@ export class ScienceDemoComponent {
       columnSorting: true,
       columns: [
         {data: 0, renderer: 'html'},
-        {data: 1, type: 'numeric', format: '0[.]000000000000000'},
-        {data: 2, type: 'numeric', format: '0[.]000000000000000', renderer: heatmapRenderer},
-        {data: 3, type: 'numeric', format: '0[.]000000000000000'},
-        {data: 4, type: 'numeric', format: '0[.]000000000000000', renderer: heatmapRenderer}
+        {data: 1, type: 'numeric', numericFormat: { pattern: '0[.]000000000000000' }},
+        {data: 2, type: 'numeric', numericFormat: { pattern: '0[.]000000000000000' }, renderer: heatmapRenderer},
+        {data: 3, type: 'numeric', numericFormat: { pattern: '0[.]000000000000000' }},
+        {data: 4, type: 'numeric', numericFormat: { pattern: '0[.]000000000000000' }, renderer: heatmapRenderer}
       ],
       afterLoadData: updateHeatmap,
       beforeChangeRender: updateHeatmap,

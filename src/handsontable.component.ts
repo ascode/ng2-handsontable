@@ -1,19 +1,23 @@
-/* tslint:disable:no-any */
-import { OnInit, OnDestroy, OnChanges, SimpleChanges, Directive, EventEmitter,
-  ElementRef, Input, NgZone } from '@angular/core';
-import { Observable } from 'rxjs/Observable';
-import { Subscription } from 'rxjs/Subscription';
-import * as Handsontable from 'handsontable/dist/handsontable.full.js';
-import { Output } from '@angular/core';
+/* tslint:disable:no-any max-file-line-count */
+import { OnInit, OnDestroy, OnChanges, SimpleChanges, Component, EventEmitter,
+  ElementRef, Input, Output, NgZone, ViewEncapsulation
+} from '@angular/core';
+import { Observable, Subscription } from 'rxjs';
+import * as Handsontable from 'handsontable';
+import { handsontableStyles } from './handsontable.component.css';
+import * as _ from 'lodash';
 
-// tslint:disable-next-line:max-line-length
-const eventNames: string[] = ['afterAddChild', 'afterBeginEditing', 'afterCellMetaReset', 'afterChange', 'afterChangesObserved', 'afterColumnMove', 'afterColumnResize', 'afterColumnSort', 'afterContextMenuDefaultOptions', 'afterContextMenuHide', 'afterContextMenuShow', 'afterCopy', 'afterCopyLimit', 'afterCreateCol', 'afterCreateRow', 'afterCut', 'afterDeselect', 'afterDestroy', 'afterDetachChild', 'afterDocumentKeyDown', 'afterDropdownMenuDefaultOptions', 'afterDropdownMenuHide', 'afterDropdownMenuShow', 'afterePaste', 'afterFilter', 'afterGetCellMeta', 'afterGetColHeader', 'afterGetColumnHeaderRenderers', 'afterGetRowHeader', 'afterGetRowHeaderRenderers', 'afterInit', 'afterLoadData', 'afterModifyTransformEnd', 'afterModifyTransformStart', 'afterMomentumScroll', 'afterOnCellCornerDblClick', 'afterOnCellCornerMouseDown', 'afterOnCellMouseDown', 'afterOnCellMouseOver', 'afterPluginsInitialized', 'afterRedo', 'afterRemoveCol', 'afterRemoveRow', 'afterRender', 'afterRenderer', 'afterRowMove', 'afterRowResize', 'afterScrollHorizontally', 'afterScrollVertically', 'afterSelection', 'afterSelectionByProp', 'afterSelectionEnd', 'afterSelectionEndByProp', 'afterSetCellMeta', 'afterSetDataAtCell', 'afterSetDataAtRowProp', 'afterTrimRow', 'afterUndo', 'afterUntrimRow', 'afterUpdateSettings', 'afterValidate', 'afterViewportColumnCalculatorOverride', 'afterViewportRowCalculatorOverride', 'beforeAddChild', 'beforeAutofill', 'beforeAutofillInsidePopulate', 'beforeCellAlignment', 'beforeChange', 'beforeChangeRender', 'beforeColumnMove', 'beforeColumnResize', 'beforeColumnSort', 'beforeContextMenuSetItems', 'beforeCopy', 'beforeCreateCol', 'beforeCreateRow', 'beforeCut', 'beforeDetachChild', 'beforeDrawBorders', 'beforeDropdownMenuSetItems', 'beforeFilter', 'beforeGetCellMeta', 'beforeInit', 'beforeInitWalkontable', 'beforeKeyDown', 'beforeOnCellMouseDown', 'beforeOnCellMouseOut', 'beforeOnCellMouseOver', 'beforePaste', 'beforeRedo', 'beforeRemoveCol', 'beforeRemoveRow', 'beforeRender', 'beforeRenderer', 'beforeRowMove', 'beforeRowResize', 'beforeSetRangeEnd', 'beforeSetRangeStart', 'beforeStretchingColumnWidth', 'beforeTouchScroll', 'beforeUndo', 'beforeValidate', 'beforeValueRender', 'construct', 'hiddenColumn', 'hiddenRow', 'init', 'manualRowHeights', 'modifyAutofillRange', 'modifyCol', 'modifyColHeader', 'modifyColumnHeaderHeight', 'modifyColWidth', 'modifyCopyableRange', 'modifyData', 'modifyRow', 'modifyRowHeader', 'modifyRowHeaderWidth', 'modifyRowHeight', 'modifyRowSourceData', 'modifyTransformEnd', 'modifyTransformStart', 'persistentStateLoad', 'persistentStateReset', 'persistentStateSave', 'skipLengthCache', 'unmodifyCol', 'unmodifyRow'];
+export type TriggerableInputProperty = 'data' | 'options' | 'colHeaders' | 'colWidths' | 'columns';
+const optionsInputProperties: TriggerableInputProperty[] = ['options', 'colHeaders', 'colWidths', 'columns'];
 
-@Directive({
-  selector: 'hotTable'
+@Component({
+  selector: 'hot-table',
+  template: ' ',
+  // tslint:disable-next-line:use-view-encapsulation
+  encapsulation: ViewEncapsulation.None,
+  styles: [handsontableStyles]
 })
-// tslint:disable-next-line:directive-class-suffix
-export class HotTable implements OnInit, OnDestroy, OnChanges {
+export class HotTableComponent implements OnInit, OnDestroy, OnChanges {
   @Input() public data: any[] = [];
   @Input() public pagedData: Observable<any[]>;
   @Input() public colHeaders: string[];
@@ -44,7 +48,7 @@ export class HotTable implements OnInit, OnDestroy, OnChanges {
   @Output() public afterDropdownMenuDefaultOptions = new EventEmitter();
   @Output() public afterDropdownMenuHide = new EventEmitter();
   @Output() public afterDropdownMenuShow = new EventEmitter();
-  @Output() public afterePaste = new EventEmitter();
+  @Output() public afterPaste = new EventEmitter();
   @Output() public afterFilter = new EventEmitter();
   @Output() public afterGetCellMeta = new EventEmitter();
   @Output() public afterGetColHeader = new EventEmitter();
@@ -149,42 +153,65 @@ export class HotTable implements OnInit, OnDestroy, OnChanges {
   @Output() public skipLengthCache = new EventEmitter();
   @Output() public unmodifyCol = new EventEmitter();
   @Output() public unmodifyRow = new EventEmitter();
+  
+  @Output() public hotInstanceCreated = new EventEmitter<Handsontable>();
 
-  private inst: any;
-  private view: any;
+  private inst: Handsontable;
+  private view: HTMLElement;
   private pagedDataSubscription: Subscription;
   private zoneQueue: (() => void)[] = [];
   private zoneQueueTimeout = 0;
 
   constructor(private element: ElementRef, private ngZone: NgZone) {
-    // fill events dynamically
-    eventNames.forEach((eventName: string) => {
-      (this as any)[eventName] = new EventEmitter();
-    });
+  }
+
+  /** Get handsontable instance. */
+  public getHandsontableInstance(): Handsontable {
+    return this.inst;
+  }
+
+  /**
+   * Mark any of the given input properties as changed, in case they were changed partially,
+   * rather than replaced by a new object. The component would pick up the latter through Angular's
+   * ngOnChanges(), but not the former.
+   */
+  public markAsChanged(properties: TriggerableInputProperty[]): void {
+    const contains = (testProperties:  TriggerableInputProperty[]) =>
+      _.intersection(properties, testProperties).length > 0;
+    if (this.inst) {
+      this.ngZone.runOutsideAngular(() => {
+        if (contains(optionsInputProperties)) {
+          this.inst.updateSettings(this.getCurrentOptions(), false);
+        }
+        if (contains(['data'])) {
+          this.inst.loadData(this.data);
+        }
+      });
+    }
   }
 
   ngOnInit() {
     this.checkInputs();
 
     this.view = document.createElement('div');
-    this.view.class = 'handsontable-container';
+    this.view.className = 'handsontable-container';
     this.element.nativeElement.appendChild(this.view);
 
     const options = this.getCurrentOptions();
 
     this.ngZone.runOutsideAngular(() => {
       this.inst = new Handsontable(this.view, options);
+      this.hotInstanceCreated.emit(this.inst);
     });
-
-    this.parseAutoComplete(options);
 
     if (this.pagedData) {
       this.data = [];
       this.pagedDataSubscription = this.pagedData.subscribe((newPagedData: any) => {
         Array.prototype.push.apply(this.data, newPagedData);
-        this.inst.loadData(this.data);
-        this.parseAutoComplete(options);
-        this.inst.updateSettings(options);
+        this.ngZone.runOutsideAngular(() => {
+          this.inst.loadData(this.data);
+          this.inst.updateSettings(options, false);
+        });
       });
     }
   }
@@ -197,61 +224,37 @@ export class HotTable implements OnInit, OnDestroy, OnChanges {
       this.pagedDataSubscription.unsubscribe();
     }
     if (this.inst) {
-      this.inst.destroy();
+      this.ngZone.runOutsideAngular(() => {
+        this.inst.destroy();
+      });
     }
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if ('options' in changes && this.inst) {
-      this.inst.updateSettings(this.getCurrentOptions());
+    const properties: TriggerableInputProperty[] = [];
+    for (const prop of optionsInputProperties) {
+      if (changes[prop] && !changes[prop].isFirstChange()) {
+        properties.push(prop);
+      }
     }
     // tslint:disable-next-line:no-string-literal
     if (changes['data'] && !changes['data'].isFirstChange()) {
-      this.inst.loadData(this.data);
+      properties.push('data');
     }
-  }
-
-  private parseAutoComplete(options: any) {
-    const inst = this.inst;
-    const columns = this.columns || options.columns;
-    const dataSet = options.data;
-
-    if (columns) {
-      columns.forEach((column: any) => {
-        if (typeof column.source === 'string') {
-          const relatedField: string = column.source;
-          column.source = (_query: any, process: any) => {
-            const row: number = inst.getSelected()[0];
-            const data: any = dataSet[row];
-
-            if (!data) {
-              return;
-            }
-
-            const fieldParts: string[] = relatedField.split('.');
-            let o: any = data;
-            for (const part of fieldParts) {
-              o = o[part];
-            }
-
-            process(o.map((item: any) => {
-              return !column.optionField ? item : item[column.optionField];
-            }));
-          };
-        }
-      });
-    }
+    this.markAsChanged(properties);
   }
 
   private checkInputs(): boolean {
     const dataCount = Number(!!this.pagedData) + Number(!!this.data) +
       Number(!!(this.options && this.options.data));
     if (dataCount > 1) {
+      // tslint:disable-next-line:no-console
       console.error('[pagedData], [data] and [options.data] are all mutually' +
        ' exclusive');
 
       return false;
     } else if (dataCount === 0) {
+      // tslint:disable-next-line:no-console
       console.error('One of [pagedData], [data] and [options.data] needs' +
         ' to be provided');
 
@@ -264,27 +267,29 @@ export class HotTable implements OnInit, OnDestroy, OnChanges {
       data: this.data || null
     };
 
-    eventNames.forEach(eventName => {
-      // Only register the event if the emitter has an observer (i.e., if the output is actually being used)
-      if ((this as any)[eventName].observers.length) {
-        htOptions[eventName] = (...args: any[]) => {
-          let data: any[] = [];
-          // Handsontable event handlers are always called with 6 arguments. Cut off any trailing undefined values.
-          for (let index = args.length; index >= 0; index--) {
-            if (args[index] !== void 0) {
-              data = args.slice(0, index + 1);
-              break;
+    _.forOwn(this, (output, key) => {
+      if (output instanceof EventEmitter) {
+        // Only register the event if the emitter has an observer (i.e., if the output is actually being used)
+        if (output.observers.length) {
+          htOptions[key] = (...args: any[]) => {
+            let data: any[] = [];
+            // Handsontable event handlers are always called with 6 arguments. Cut off any trailing undefined values.
+            for (let index = args.length; index >= 0; index--) {
+              if (args[index] !== void 0) {
+                data = args.slice(0, index + 1);
+                break;
+              }
             }
-          }
-          // Queue all emissions to only cause 1 Zone.run() call per tick.
-          this.queueForRunningInZone(() => {
-            (this as any)[eventName].emit(data);
-          });
-        };
+            // Queue all emissions to only cause 1 Zone.run() call per tick.
+            this.queueForRunningInZone(() => {
+              output.emit(data);
+            });
+          };
+        }
       }
     });
 
-    const additionalFields: string[] = ['colHeaders', 'colWidths', 'columns'];
+    const additionalFields: TriggerableInputProperty[] = ['colHeaders', 'colWidths', 'columns'];
     additionalFields.forEach(field => {
       if ((this as any)[field]) {
         Object.assign(htOptions, {

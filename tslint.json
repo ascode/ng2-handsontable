@@ -8,6 +8,8 @@
     "only-arrow-functions": false,
     "no-access-missing-member": false,
     "directive-selector": false,
-    "component-selector": false
+    "component-selector": false,
+    "import-blacklist": false,
+    "no-implicit-dependencies": false
   }
 }

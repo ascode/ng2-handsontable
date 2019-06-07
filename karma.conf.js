@@ -10,7 +10,9 @@ module.exports = function (config) {
     plugins: [
       require('karma-jasmine'),
       require('karma-chrome-launcher'),
-      require('karma-remap-istanbul'),
+      require('karma-jasmine-html-reporter'),
+      require('karma-spec-reporter'),
+      require('karma-coverage-istanbul-reporter'),
       require('@angular/cli/plugins/karma')
     ],
     files: [
@@ -19,19 +21,16 @@ module.exports = function (config) {
     preprocessors: {
       './scripts/test.ts': ['@angular/cli']
     },
-    remapIstanbulReporter: {
-      reports: {
-        html: 'coverage',
-        lcovonly: './coverage/coverage.lcov'
-      }
+    coverageIstanbulReporter: {
+      reports: [ 'html', 'lcovonly' ],
+      fixWebpackSourcePaths: true
     },
     angularCli: {
-      config: './angular-cli.json',
       environment: 'dev'
     },
     reporters: config.angularCli && config.angularCli.codeCoverage
-      ? ['dots', 'karma-remap-istanbul']
-      : ['dots'],
+      ? ['spec', 'coverage-istanbul']
+      : ['spec', 'kjhtml'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
@@ -45,7 +44,8 @@ module.exports = function (config) {
       }
     },
     mime: { 'text/x-typescript': ['ts','tsx'] },
-    client: { captureConsole: true }
+    client: { captureConsole: true, clearContext: false },
+    browserNoActivityTimeout: 60000 // Overall run-time unusually high due to current Angular-Zone issue
   };
 
   if (process.env.TRAVIS) {
@@ -62,7 +62,7 @@ module.exports = function (config) {
     configuration.reporters.push('saucelabs');
     configuration.sauceLabs = {
       verbose: true,
-      testName: 'ng2-handsontable unit tests',
+      testName: 'ng2-bootstrap unit tests',
       recordScreenshots: false,
       username: process.env.SAUCE_USERNAME,
       accessKey: process.env.SAUCE_ACCESS_KEY,
@@ -77,7 +77,7 @@ module.exports = function (config) {
     configuration.browsers = Object.keys(configuration.customLaunchers);
     configuration.concurrency = 3;
     configuration.browserDisconnectTolerance = 2;
-    configuration.browserNoActivityTimeout = 20000;
+    configuration.browserNoActivityTimeout = 60000; // Overall run-time unusually high due to current Angular-Zone issue
     configuration.browserDisconnectTimeout = 5000;
   }
 

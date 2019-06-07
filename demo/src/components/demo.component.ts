@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 
-let gettingStarted = require('html-loader!markdown-loader!../getting-started.md');
+// tslint:disable-next-line:no-var-requires
+const gettingStarted = require('html-loader!markdown-loader!../getting-started.md');
 
 @Component({
   selector: 'app',
@@ -8,7 +9,8 @@ let gettingStarted = require('html-loader!markdown-loader!../getting-started.md'
     <main class="bd-pageheader">
       <div class="container">
         <h1>ng2-handsontable</h1>
-        <p>The Angular2 directive for <a href="https://github.com/handsontable/handsontable" target="_blank">Handsontable</a>
+        <p>The Angular2+ wrapper for
+          <a href="https://github.com/handsontable/handsontable" target="_blank">Handsontable</a>
         </p>
         <a class="btn btn-primary" href="https://github.com/valor-software/ng2-handsontable">View on GitHub</a>
         <div class="row">
@@ -27,7 +29,7 @@ let gettingStarted = require('html-loader!markdown-loader!../getting-started.md'
     </main>
 
     <div class="container">
-      <section id="getting-started">${gettingStarted}</section>
+      <section id="getting-started" [innerHtml]="gettingStarted"></section>
 
       <handsontable-section class="col-md-12"></handsontable-section>
     </div>
@@ -42,4 +44,5 @@ let gettingStarted = require('html-loader!markdown-loader!../getting-started.md'
   `
 })
 export class DemoComponent {
+  gettingStarted = gettingStarted;
 }

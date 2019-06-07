@@ -14,12 +14,13 @@
       "main": "main.ts",
       "test": "../../scripts/test.ts",
       "tsconfig": "tsconfig.json",
+      "polyfills": "polyfills.ts",
+      "testTsconfig": "tsconfig.spec.json",
       "prefix": "",
       "mobile": false,
       "styles": [
       ],
       "scripts": [
-        "../../node_modules/handsontable/dist/handsontable.full.js",
         "../../node_modules/chroma-js/chroma.js"
       ],
       "environmentSource": "environments/environment.ts",
